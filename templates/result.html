@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ model }} Fiyatları - TechFiyat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Poppins', sans-serif;
+            color: #333;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 15px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #fff !important;
+            letter-spacing: 1px;
+        }
+        .navbar-brand span { color: #3b82f6; } /* Tech mavisi */
+
+        /* Genel Düzen */
+        .page-header {
+            text-align: center;
+            padding: 40px 0 30px;
+        }
+        .page-title {
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .search-summary {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        /* Ürün Kartları - Temel Stil */
+        .deal-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .deal-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            border-color: #cbd5e1;
+        }
+
+        /* Logolar */
+        .store-logo-wrapper {
+            width: 100px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            padding: 5px;
+            border-radius: 8px;
+            margin-right: 20px;
+        }
+        .store-logo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: grayscale(100%); /* Varsayılan gri tonlama */
+            opacity: 0.8;
+            transition: 0.3s;
+        }
+        .deal-card:hover .store-logo {
+            filter: grayscale(0%); /* Üzerine gelince renklenir */
+            opacity: 1;
+        }
+
+        /* Ürün Bilgisi */
+        .product-details {
+            flex-grow: 1;
+            padding-right: 20px;
+        }
+        .product-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #334155;
+            margin-bottom: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* 2 satırdan fazlasını kes */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .store-badge {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Fiyat Alanı */
+        .price-area {
+            text-align: right;
+            min-width: 160px;
+        }
+        .price-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #334155;
+            display: block;
+        }
+        .btn-deal {
+            background-color: #fff;
+            color: #334155;
+            border: 2px solid #e2e8f0;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 8px;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+        .btn-deal:hover {
+            background-color: #334155;
+            color: #fff;
+            border-color: #334155;
+        }
+
+        /* --- ŞAMPİYON KART (EN UCUZ) TASARIMI --- */
+        .winner-card {
+            border: 2px solid #22c55e; /* Yeşil Çerçeve */
+            background: linear-gradient(to right, #f0fdf4, #fff);
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.15);
+            transform: scale(1.02); /* Biraz daha büyük */
+            margin-bottom: 30px; /* Diğerlerinden ayır */
+        }
+        .winner-card:hover {
+            transform: scale(1.02) translateY(-3px);
+        }
+        .winner-card .price-text {
+            color: #15803d; /* Koyu yeşil fiyat */
+            font-size: 2rem;
+        }
+        .winner-card .btn-deal {
+            background-color: #22c55e;
+            border-color: #22c55e;
+            color: white;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        .winner-card .btn-deal:hover {
+            background-color: #16a34a;
+        }
+        .winner-card .store-logo {
+            filter: grayscale(0%); /* Şampiyon logo hep renkli */
+            transform: scale(1.1);
+        }
+        
+        /* Şampiyon Rozeti */
+        .winner-badge {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: #22c55e;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-bottom-right-radius: 12px;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Mobil Uyum */
+        @media (max-width: 768px) {
+            .deal-card { flex-direction: column; text-align: center; }
+            .store-logo-wrapper { margin: 0 auto 15px auto; }
+            .product-details { padding: 0; margin-bottom: 15px; }
+            .price-area { text-align: center; }
+            .winner-card { transform: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Tech<span>Fiyat</span></a>
+            <a href="/" class="btn btn-outline-light btn-sm rounded-pill px-4">
+                <i class="fa-solid fa-magnifying-glass me-2"></i>Yeni Arama
+            </a>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        
+        <div class="page-header">
+            <h2 class="page-title">Sonuçlar</h2>
+            <p class="search-summary">
+                "<strong>{{ model }}</strong>" için 
+                <span class="badge bg-primary rounded-pill">{{ fiyatlar|length }}</span> 
+                fiyat bulundu ve karşılaştırıldı.
+            </p>
+        </div>
+
+        {% if fiyatlar %}
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    
+                    {% for item in fiyatlar %}
+                        <div class="deal-card {% if loop.first %}winner-card{% endif %}">
+                            
+                            {% if loop.first %}
+                                <div class="winner-badge">
+                                    <i class="fa-solid fa-trophy me-1"></i> En İyi Fiyat
+                                </div>
+                            {% endif %}
+
+                            <div class="store-logo-wrapper">
+                                <img src="{{ url_for('static', filename='logos/' + item.site|lower + '.png') }}" 
+                                     alt="{{ item.site }}" 
+                                     class="store-logo"
+                                     onerror="this.style.display='none'">
+                            </div>
+
+                            <div class="product-details">
+                                <div class="store-badge">
+                                    {% if item.site == 'Hepsiburada' %}
+                                        <i class="fa-solid fa-bag-shopping text-warning"></i>
+                                    {% elif item.site == 'Trendyol' %}
+                                        <i class="fa-solid fa-shirt text-danger"></i>
+                                    {% elif item.site == 'Amazon' %}
+                                        <i class="fa-brands fa-amazon text-dark"></i>
+                                    {% elif item.site == 'N11' %}
+                                        <i class="fa-solid fa-bug text-danger"></i>
+                                    {% endif %}
+                                    {{ item.site }}
+                                </div>
+                                <h3 class="product-title">{{ item.name }}</h3>
+                            </div>
+
+                            <div class="price-area">
+                                <span class="price-text">{{ item.price_str }}</span>
+                                <a href="{{ item.link }}" target="_blank" class="btn-deal">
+                                    Mağazaya Git <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
+                                </a>
+                            </div>
+
+                        </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="alert alert-light shadow-sm d-inline-block px-5 py-4">
+                    <i class="fa-regular fa-face-frown fa-3x text-muted mb-3"></i>
+                    <h4>Sonuç Bulunamadı</h4>
+                    <p class="text-muted">Aramanıza uygun bir ürün bulamadık veya botlar engellendi.</p>
+                    <a href="/" class="btn btn-primary rounded-pill mt-2">Tekrar Dene</a>
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>
