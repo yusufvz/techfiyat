@@ -1,147 +1,117 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
 
 def search_trendyol(query):
-    print(f"\n🔍 Trendyol'da aranıyor: {query}")
-    
-   options = Options()
-    # --- HIZ AYARLARI (BUNU TRENDYOL VE N11 DOSYALARINA YAPIŞTIR) ---
-    options.page_load_strategy = 'eager' # Sayfanın bitmesini bekleme!
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--dns-prefetch-disable")
-    options.add_argument("--window-size=1920,1080")
-    
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-    
-    # Resimleri Kapat (Büyük Hız)
-    prefs = {
-        "profile.managed_default_content_settings.images": 2,
-        "profile.default_content_setting_values.notifications": 2
-    }
-    options.add_experimental_option("prefs", prefs)
-    
-    driver = webdriver.Chrome(options=options)
+    print(f"🔍 Trendyol'da aranıyor: {query}")
     results = []
-
+    driver = None
+    
     try:
-        search_url = f"https://www.trendyol.com/sr?q={query.replace(' ', '+')}"
-        driver.get(search_url)
+        options = Options()
+        # --- HIZ VE PERFORMANS AYARLARI (Render İçin Kritik) ---
+        options.page_load_strategy = 'eager'  # Sayfanın tamamen bitmesini bekleme
+        options.add_argument("--headless")    # Arka planda çalıştır
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions") 
+        options.add_argument("--dns-prefetch-disable")
+        options.add_argument("--window-size=1920,1080")
         
-        # Sayfanın yüklenmesi için statik bekleme
-        time.sleep(1)
+        # Bot olduğumuzu gizlemeye çalış
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
         
-        # Sayfayı aşağı kaydır (Ürünlerin yüklenmesi için şart)
-        print("📜 Sayfa kaydırılıyor...")
-        driver.execute_script("window.scrollBy(0, 700);")
-        time.sleep(1)
-        driver.execute_script("window.scrollBy(0, 700);")
-        time.sleep(1)
-
-        # YÖNTEM: Sayfadaki TÜM linkleri (<a> etiketlerini) topla
-        print("⏳ Linkler taranıyor...")
-        all_links = driver.find_elements(By.TAG_NAME, "a")
+        # Resimleri Yükleme (Büyük Hız Kazandırır)
+        prefs = {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        }
+        options.add_experimental_option("prefs", prefs)
         
-        print(f"🔗 Sayfada toplam {len(all_links)} link bulundu.")
+        driver = webdriver.Chrome(options=options)
 
-        # Sadece içinde ürün imzası ("-p-") olan linkleri filtrele
-        product_links = []
-        for link in all_links:
-            href = link.get_attribute("href")
-            if href and "-p-" in href and "sr?q=" not in href: # Arama linklerini hariç tut
-                product_links.append(link)
+        # Arama URL'si
+        url = f"https://www.trendyol.com/sr?q={query.replace(' ', '%20')}"
+        driver.get(url)
 
-        print(f"✅ Trendyol: Bulunan ÜRÜN sayısı: {len(product_links)}")
+        # Ürün kartlarının yüklenmesini bekle (Maksimum 10 saniye)
+        wait = WebDriverWait(driver, 10)
+        try:
+            # Trendyol ürün kartı sınıfı
+            wait.until(EC.presence_of_element_located((By.CLASS_NAME, "p-card-wrppr")))
+        except:
+            print("⚠️ Trendyol ürünleri yüklenemedi veya geç yanıt verdi.")
+        
+        # Hafif bir kaydırma yap (Lazy load tetiklensin diye)
+        driver.execute_script("window.scrollBy(0, 300);")
+        time.sleep(1) # Kaydırma sonrası kısa bekleme
 
-        # İlk 15 ürünü analiz et
-        # (Set kullanarak aynı ürünü tekrar eklemeyi önleyelim)
-        added_links = set()
+        # Ürünleri bul
+        products = driver.find_elements(By.CLASS_NAME, "p-card-wrppr")
+        print(f"✅ Trendyol: {len(products)} ürün bulundu.")
 
-        for link_element in product_links:
-            if len(results) >= 10: break # 10 ürün yeterli
-
+        # İLK 5 ÜRÜNÜ AL (Render'ı yormamak için limit koyduk)
+        for product in products[:5]:
             try:
-                href = link_element.get_attribute("href")
-                if href in added_links: continue # Zaten eklediysek geç
+                # --- İSİM ÇEKME ---
+                # Trendyol'da marka ve model ismi ayrı span'lardadır, birleştiriyoruz.
+                try:
+                    brand = product.find_element(By.CLASS_NAME, "prdct-desc-cntnr-ttl").text
+                    name_part = product.find_element(By.CLASS_NAME, "prdct-desc-cntnr-name").text
+                    full_name = f"{brand} {name_part}"
+                except:
+                    continue # İsmi alamazsak bu ürünü geç
                 
-                # Linkin içindeki metni (text) oku. Trendyol'da fiyat ve isim genelde linkin içindedir.
-                card_text = link_element.text
-                
-                # Metin boşsa (bazen sadece resim olur), linkin kapsayıcı div'ine bak
-                if not card_text.strip():
+                # --- LİNK ÇEKME ---
+                try:
+                    link_elem = product.find_element(By.TAG_NAME, "a")
+                    link = link_elem.get_attribute("href")
+                except:
+                    link = "#"
+
+                # --- FİYAT ÇEKME ---
+                # İndirimli fiyatı almaya çalış, yoksa normal fiyatı al
+                try:
+                    price_text = product.find_element(By.CLASS_NAME, "prc-box-dscntd").text
+                except:
                     try:
-                        # Linkin bir üst elementine (parent) bak
-                        parent = link_element.find_element(By.XPATH, "./..")
-                        card_text = parent.text
+                        price_text = product.find_element(By.CLASS_NAME, "prc-box-sllng").text
                     except:
-                        pass
+                        continue # Fiyat yoksa geç
 
-                # Eğer hala metin yoksa veya içinde TL yoksa geç
-                if "TL" not in card_text:
-                    continue
-
-                # --- FİYAT BULMA ---
-                valid_prices = []
-                # Satır satır oku
-                lines = card_text.split('\n')
-                for line in lines:
-                    if 'x' in line.lower() or 'taksit' in line.lower() or 'ay' in line.lower():
-                        continue
+                # Fiyat Temizleme (TL, nokta, virgül temizliği)
+                # Örnek: "12.500 TL" -> 12500.0
+                clean_price = price_text.replace('.', '').replace(',', '.').replace('TL', '').strip()
+                match = re.search(r"(\d+(\.\d+)?)", clean_price)
+                
+                if match:
+                    price_val = float(match.group(1))
                     
-                    matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', line)
-                    for match in matches:
-                        clean = match.replace('.', '').replace(',', '.')
-                        try:
-                            val = float(clean)
-                            if val > 10000: # Filtre
-                                valid_prices.append(val)
-                        except:
-                            continue
-                
-                if not valid_prices: continue
+                    # Filtre: 2000 TL altı kılıf/aksesuardır, alma (Laptop arıyorsan)
+                    if price_val > 2000:
+                        results.append({
+                            "site": "Trendyol",
+                            "name": full_name,
+                            "price_str": f"{price_val:,.0f} TL".replace(',', '.'), # Güzel görünen fiyat
+                            "price": price_val, # Sıralama için sayısal fiyat
+                            "link": link
+                        })
 
-                final_price = min(valid_prices)
-                price_str = f"{final_price:,.0f} TL".replace(',', '.')
-
-                # --- İSİM BULMA ---
-                # Linkin içindeki en uzun metni isim olarak alalım
-                name = ""
-                longest_line = ""
-                for line in lines:
-                    if len(line) > len(longest_line) and "TL" not in line and "Kargo" not in line:
-                        longest_line = line
-                
-                name = longest_line if len(longest_line) > 5 else "Trendyol Ürünü"
-
-                print(f"   💰 {price_str} - {name[:30]}...")
-
-                results.append({
-                    "site": "Trendyol",
-                    "name": name,
-                    "price_str": price_str,
-                    "price": final_price,
-                    "link": href
-                })
-                
-                added_links.add(href)
-
-            except Exception:
+            except Exception as e:
+                # Tek bir üründe hata olursa döngüyü bozma, diğer ürüne geç
                 continue
 
     except Exception as e:
-        print(f"🚨 Trendyol Hatası: {e}")
+        print(f"🚨 Trendyol Genel Hata: {e}")
     
     finally:
-        driver.quit()
-
+        if driver:
+            driver.quit()
+            
     return results
-
-if __name__ == "__main__":
-    search_trendyol("asus tuf")
