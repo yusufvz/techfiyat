@@ -1,10 +1,9 @@
 from flask import Flask, render_template, request
 import concurrent.futures
-# Bot dosyalarımızı içeri aktarıyoruz
+# Bot dosyaları
 from hepsiburada import search_hepsiburada
 from trendyol import search_trendyol
 from n11 import search_n11
-# from amazon import search_amazon  <-- Amazon'u şimdilik kapattık
 
 app = Flask(__name__)
 
@@ -17,37 +16,30 @@ def search():
     query = request.args.get('q')
     all_results = []
     
-    # --- PARALEL İŞLEM MOTORU (3 SİTE) ---
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    # --- AKILLI PARALEL MOD (MAX 2) ---
+    # max_workers=2 diyerek RAM'i koruyoruz.
+    # Aynı anda en fazla 2 site taranacak, biri bitince diğeri başlayacak.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         futures = []
         
-        # Görevleri aynı anda başlatıyoruz
-        # 1. Hepsiburada
+        # Görevleri havuza atıyoruz
         futures.append(executor.submit(search_hepsiburada, query))
-        
-        # 2. Trendyol
         futures.append(executor.submit(search_trendyol, query))
-        
-        # 3. N11
         futures.append(executor.submit(search_n11, query))
         
-        # Amazon'u işlemciyi yormamak için kapalı tutuyoruz
-        # futures.append(executor.submit(search_amazon, query))
-
-        # --- SONUÇLARI TOPLA ---
+        # Sonuçları bekleyip topluyoruz
         for future in concurrent.futures.as_completed(futures):
             try:
                 data = future.result()
                 if data:
                     all_results.extend(data)
             except Exception as e:
-                print(f"Site taramasında hata: {e}")
+                print(f"Bir site taranırken hata oluştu: {e}")
 
-    # Tüm sonuçları fiyata göre sırala (En ucuz en üstte)
+    # Fiyata göre sırala
     all_results.sort(key=lambda x: x['price'])
     
     return render_template('results.html', results=all_results, query=query)
 
 if __name__ == '__main__':
-    # Threading modunu açıyoruz ki Flask da istekleri paralel karşılayabilsin
     app.run(host='0.0.0.0', port=5000, threaded=True)
