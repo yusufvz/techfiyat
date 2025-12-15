@@ -5,101 +5,54 @@ import time
 import re
 
 def search_n11(query):
-    print(f"🔍 N11'de aranıyor: {query}")
+    print(f"N11 taranıyor: {query}")
+    results = []
     
     options = Options()
-    # --- HIZ AYARLARI ---
-    options.page_load_strategy = 'eager' # Sayfanın bitmesini bekleme!
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--dns-prefetch-disable")
     options.add_argument("--window-size=1920,1080")
-    
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-    
-    # Resimleri Kapat (Büyük Hız)
-    prefs = {
-        "profile.managed_default_content_settings.images": 2,
-        "profile.default_content_setting_values.notifications": 2
-    }
-    options.add_experimental_option("prefs", prefs)
-    
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
+
     driver = webdriver.Chrome(options=options)
-    results = []
-
-    try:
-        # N11 Arama Linki
-        search_url = f"https://www.n11.com/arama?q={query.replace(' ', '+')}"
-        driver.get(search_url)
-        
-        # Bekleme süresini minimumda tutuyoruz (Eager mod sayesinde)
-        time.sleep(1)
-        
-        # Sayfayı kaydır
-        driver.execute_script("window.scrollBy(0, 500);")
-        time.sleep(1)
-
-        # N11 ürün kartları
-        product_cards = driver.find_elements(By.CSS_SELECTOR, "li.column")
-        print(f"✅ N11: Bulunan ürün sayısı: {len(product_cards)}")
-
-        # İlk 10 ürünü al
-        for card in product_cards[:10]:
-            try:
-                card_text = card.text
-                
-                # --- İSİM BULMA ---
-                name = ""
-                try:
-                    name = card.find_element(By.CSS_SELECTOR, "h3.productName").text
-                except:
-                    continue 
-
-                # --- LİNK BULMA ---
-                try:
-                    link = card.find_element(By.TAG_NAME, "a").get_attribute("href")
-                except:
-                    link = "#"
-
-                # --- FİYAT BULMA ---
-                valid_prices = []
-                lines = card_text.split('\n')
-                
-                for line in lines:
-                    matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', line)
-                    for match in matches:
-                        clean = match.replace('.', '').replace(',', '.')
-                        try:
-                            val = float(clean)
-                            # Laptop filtresi (10.000 TL altı elenir)
-                            if val > 10000: 
-                                valid_prices.append(val)
-                        except:
-                            continue
-                
-                if valid_prices:
-                    final_price = min(valid_prices)
-                    price_str = f"{final_price:,.0f} TL".replace(',', '.')
-                    
-                    results.append({
-                        "site": "N11",
-                        "name": name,
-                        "price_str": price_str,
-                        "price": final_price,
-                        "link": link
-                    })
-
-            except Exception:
-                continue
-
-    except Exception as e:
-        print(f"🚨 N11 Hatası: {e}")
     
+    try:
+        url = f"https://www.n11.com/arama?q={query.replace(' ', '+')}"
+        driver.get(url)
+        time.sleep(3)
+
+        products = driver.find_elements(By.CSS_SELECTOR, "li.column")
+        
+        for product in products[:3]:
+            try:
+                name = product.find_element(By.CSS_SELECTOR, "h3.productName").text
+                link = product.find_element(By.TAG_NAME, "a").get_attribute("href")
+                
+                price_text = product.text
+                matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', price_text)
+                
+                if matches:
+                    vals = []
+                    for m in matches:
+                        v = float(m.replace('.', '').replace(',', '.'))
+                        if v > 1000: vals.append(v)
+                    
+                    if vals:
+                        final = min(vals)
+                        results.append({
+                            "site": "N11",
+                            "name": name,
+                            "price_str": f"{final:,.0f} TL".replace(',', '.'),
+                            "price": final,
+                            "link": link
+                        })
+            except:
+                continue
+    except Exception as e:
+        print(f"N11 Hata: {e}")
     finally:
         driver.quit()
-
+        
     return results
