@@ -8,19 +8,25 @@ def search_trendyol(query):
     print(f"\n🔍 Trendyol'da aranıyor: {query}")
     
     options = Options()
-    # --- SUNUCU İÇİN ZORUNLU AYARLAR ---
-    options.add_argument("--headless") # Sunucuda ekran olmadığı için ŞART
-    options.add_argument("--no-sandbox") # Linux güvenliği için ŞART
-    options.add_argument("--disable-dev-shm-usage") # Bellek hatası almamak için ŞART
+    # --- HIZ VE PERFORMANS AYARLARI (TÜM SİTELER İÇİN) ---
+    options.page_load_strategy = 'eager'  # Sayfanın tamamen bitmesini bekleme
+    options.add_argument("--headless")    # Ekran yok (Hız artar)
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions") 
+    options.add_argument("--dns-prefetch-disable")
     options.add_argument("--window-size=1920,1080")
     
-    # --- İNSAN GİBİ GÖRÜNME AYARLARI ---
+    # Bot olduğumuzu gizle
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
     
-    # Resimleri kapatma (Hız için)
-    prefs = {"profile.managed_default_content_settings.images": 2}
+    # Resimleri ve Bildirimleri Kapat (Büyük Hız Kazandırır)
+    prefs = {
+        "profile.managed_default_content_settings.images": 2,
+        "profile.default_content_setting_values.notifications": 2
+    }
     options.add_experimental_option("prefs", prefs)
     
     driver = webdriver.Chrome(options=options)
@@ -31,14 +37,14 @@ def search_trendyol(query):
         driver.get(search_url)
         
         # Sayfanın yüklenmesi için statik bekleme
-        time.sleep(5)
+        time.sleep(1)
         
         # Sayfayı aşağı kaydır (Ürünlerin yüklenmesi için şart)
         print("📜 Sayfa kaydırılıyor...")
         driver.execute_script("window.scrollBy(0, 700);")
-        time.sleep(2)
+        time.sleep(1)
         driver.execute_script("window.scrollBy(0, 700);")
-        time.sleep(2)
+        time.sleep(1)
 
         # YÖNTEM: Sayfadaki TÜM linkleri (<a> etiketlerini) topla
         print("⏳ Linkler taranıyor...")
