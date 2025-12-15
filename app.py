@@ -1,52 +1,60 @@
 from flask import Flask, render_template, request
-
-# Hepsiburada dosyasını çağır (Trendyol ve N11 dosyaların duruyorsa onları da buraya ekleyebiliriz)
-try:
-    from hepsiburada import search_hepsiburada
-except ImportError:
-    search_hepsiburada = None
-
-# Trendyol dosyan varsa yorumu kaldır
-try:
-    from trendyol import search_trendyol
-except ImportError:
-    search_trendyol = None
+from hepsiburada import search_hepsiburada 
+from trendyol import search_trendyol
+from n11 import search_n11
+from amazon import search_amazon
+# Yeni veritabanı yöneticimizi çağırıyoruz
+from db_manager import init_db, save_search_results, get_cached_results
 
 app = Flask(__name__)
 
-@app.route('/')
+# Uygulama başlarken veritabanını bir kere kur
+init_db()
+
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/search')
+@app.route("/search")
 def search():
-    query = request.args.get('q')
-    all_results = []
+    model = request.args.get("model")
     
-    # --- 1. Hepsiburada Taraması ---
-    if search_hepsiburada:
-        try:
-            print(">>> Hepsiburada Başlıyor...")
-            hb_results = search_hepsiburada(query)
-            if hb_results:
-                all_results.extend(hb_results)
-        except Exception as e:
-            print(f"HB Hatası: {e}")
+    if not model:
+        return render_template("index.html")
 
-    # --- 2. Trendyol Taraması (Varsa çalışır) ---
-    if search_trendyol:
-        try:
-            print(">>> Trendyol Başlıyor...")
-            ty_results = search_trendyol(query)
-            if ty_results:
-                all_results.extend(ty_results)
-        except Exception as e:
-            print(f"TY Hatası: {e}")
+    # --- ADIM 1: ÖNCE HAFIZAYA BAK ---
+    # 60 dakikadan daha yeni bir kayıt var mı?
+    cached_data = get_cached_results(model, cache_duration_minutes=60)
+    
+    if cached_data:
+        # EĞER VARSA: Hiç bot çalıştırma, direkt bunu göster!
+        return render_template("result.html", model=model, fiyatlar=cached_data)
 
-    # Sonuçları Sırala
+    # --- ADIM 2: HAFIZADA YOKSA BOTLARI ÇALIŞTIR ---
+    print(f"\n🚀 Hafızada yok, siteler taranıyor: {model}")
+
+    hb_results = search_hepsiburada(model)
+    ty_results = search_trendyol(model)
+    n11_results = search_n11(model)
+    amz_results = search_amazon(model)
+
+    # Hepsini birleştir
+    all_results = hb_results + ty_results + n11_results + amz_results
+
+    # Sırala
     all_results.sort(key=lambda x: x['price'])
-    
-    return render_template('results.html', results=all_results, query=query)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # --- ADIM 3: SONUÇLARI HAFIZAYA KAYDET ---
+    if all_results:
+        save_search_results(model, all_results)
+
+    print(f"🏁 Toplam {len(all_results)} sonuç bulundu ve görüntülendi.\n")
+
+    return render_template("result.html", model=model, fiyatlar=all_results)
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+if __name__ == "__main__":
+    app.run(debug=True)

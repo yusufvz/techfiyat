@@ -1,12 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 import re
 
 def search_trendyol(query):
-    print(f"Trendyol taranıyor: {query}")
-    results = []
+    print(f"🔍 Trendyol'da aranıyor: {query}")
     
     options = Options()
     options.add_argument("--headless")
@@ -14,43 +15,84 @@ def search_trendyol(query):
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
-
-    driver = webdriver.Chrome(options=options)
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
     
-    try:
-        url = f"https://www.trendyol.com/sr?q={query.replace(' ', '%20')}"
-        driver.get(url)
-        time.sleep(3) # Yüklenmesini bekle
+    prefs = {"profile.managed_default_content_settings.images": 2}
+    options.add_experimental_option("prefs", prefs)
+    
+    # --- KRİTİK DÜZELTME ---
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+    results = []
 
-        products = driver.find_elements(By.CLASS_NAME, "p-card-wrppr")
+    try:
+        search_url = f"https://www.trendyol.com/sr?q={query.replace(' ', '+')}"
+        driver.get(search_url)
+        time.sleep(3)
         
-        for product in products[:3]:
+        # Trendyol scroll sever
+        driver.execute_script("window.scrollBy(0, 500);")
+        time.sleep(1)
+
+        product_links = []
+        all_links = driver.find_elements(By.TAG_NAME, "a")
+        for link in all_links:
+            href = link.get_attribute("href")
+            if href and "-p-" in href and "sr?q=" not in href:
+                product_links.append(link)
+
+        print(f"✅ Trendyol: {len(product_links)} potansiyel ürün.")
+
+        added_urls = set()
+        for link_elem in product_links[:5]: # RAM için limit 5
             try:
-                brand = product.find_element(By.CLASS_NAME, "prdct-desc-cntnr-ttl").text
-                name_part = product.find_element(By.CLASS_NAME, "prdct-desc-cntnr-name").text
-                full_name = f"{brand} {name_part}"
-                link = product.find_element(By.TAG_NAME, "a").get_attribute("href")
+                href = link_elem.get_attribute("href")
+                if href in added_urls: continue
                 
-                price_text = product.text
-                # Basit fiyat bulucu
-                match = re.search(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', price_text)
+                card_text = link_elem.text
+                if not card_text.strip(): # Yazı yoksa kapsayıcıya bak
+                    try:
+                        card_text = link_elem.find_element(By.XPATH, "./..").text
+                    except: pass
                 
-                if match:
-                    clean = float(match.group(1).replace('.', '').replace(',', '.'))
-                    if clean > 1000:
-                        results.append({
-                            "site": "Trendyol",
-                            "name": full_name,
-                            "price_str": f"{clean:,.0f} TL".replace(',', '.'),
-                            "price": clean,
-                            "link": link
-                        })
-            except:
-                continue
+                if "TL" not in card_text: continue
+
+                matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', card_text)
+                prices = []
+                for m in matches:
+                    try:
+                        v = float(m.replace('.', '').replace(',', '.'))
+                        if v > 2000: prices.append(v)
+                    except: continue
+                
+                if not prices: continue
+                
+                final_price = min(prices)
+                
+                # İsim bulma (En uzun satırı isim varsayalım)
+                lines = card_text.split('\n')
+                name = "Trendyol Ürünü"
+                longest = ""
+                for line in lines:
+                    if len(line) > len(longest) and "TL" not in line:
+                        longest = line
+                if len(longest) > 5: name = longest
+
+                results.append({
+                    "site": "Trendyol",
+                    "name": name,
+                    "price_str": f"{final_price:,.0f} TL".replace(',', '.'),
+                    "price": final_price,
+                    "link": href
+                })
+                added_urls.add(href)
+
+            except: continue
+
     except Exception as e:
-        print(f"TY Hata: {e}")
+        print(f"🚨 Trendyol Hatası: {e}")
     finally:
         driver.quit()
-        
+
     return results
