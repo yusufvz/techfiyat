@@ -7,22 +7,21 @@ import re
 def search_trendyol(query):
     print(f"\n🔍 Trendyol'da aranıyor: {query}")
     
-    options = Options()
-    # --- HIZ VE PERFORMANS AYARLARI (TÜM SİTELER İÇİN) ---
-    options.page_load_strategy = 'eager'  # Sayfanın tamamen bitmesini bekleme
-    options.add_argument("--headless")    # Ekran yok (Hız artar)
+   options = Options()
+    # --- HIZ AYARLARI (BUNU TRENDYOL VE N11 DOSYALARINA YAPIŞTIR) ---
+    options.page_load_strategy = 'eager' # Sayfanın bitmesini bekleme!
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions") 
+    options.add_argument("--disable-extensions")
     options.add_argument("--dns-prefetch-disable")
     options.add_argument("--window-size=1920,1080")
     
-    # Bot olduğumuzu gizle
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
     
-    # Resimleri ve Bildirimleri Kapat (Büyük Hız Kazandırır)
+    # Resimleri Kapat (Büyük Hız)
     prefs = {
         "profile.managed_default_content_settings.images": 2,
         "profile.default_content_setting_values.notifications": 2
