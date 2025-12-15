@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request
-import concurrent.futures
-# Bot dosyaları
+# Bot dosyalarımız
 from hepsiburada import search_hepsiburada
 from trendyol import search_trendyol
 from n11 import search_n11
@@ -16,30 +15,41 @@ def search():
     query = request.args.get('q')
     all_results = []
     
-    # --- AKILLI PARALEL MOD (MAX 2) ---
-    # max_workers=2 diyerek RAM'i koruyoruz.
-    # Aynı anda en fazla 2 site taranacak, biri bitince diğeri başlayacak.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        futures = []
-        
-        # Görevleri havuza atıyoruz
-        futures.append(executor.submit(search_hepsiburada, query))
-        futures.append(executor.submit(search_trendyol, query))
-        futures.append(executor.submit(search_n11, query))
-        
-        # Sonuçları bekleyip topluyoruz
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                data = future.result()
-                if data:
-                    all_results.extend(data)
-            except Exception as e:
-                print(f"Bir site taranırken hata oluştu: {e}")
+    # --- GÜVENLİ SIRALI MOD ---
+    # Siteleri tek tek tarayacağız ki RAM şişmesin.
+    
+    # 1. Hepsiburada
+    try:
+        print("Hepsiburada taranıyor...")
+        hb_data = search_hepsiburada(query)
+        if hb_data:
+            all_results.extend(hb_data)
+    except Exception as e:
+        print(f"Hepsiburada hatası: {e}")
 
-    # Fiyata göre sırala
+    # 2. Trendyol
+    try:
+        print("Trendyol taranıyor...")
+        ty_data = search_trendyol(query)
+        if ty_data:
+            all_results.extend(ty_data)
+    except Exception as e:
+        print(f"Trendyol hatası: {e}")
+
+    # 3. N11
+    try:
+        print("N11 taranıyor...")
+        n11_data = search_n11(query)
+        if n11_data:
+            all_results.extend(n11_data)
+    except Exception as e:
+        print(f"N11 hatası: {e}")
+
+    # Sonuçları fiyata göre sırala
     all_results.sort(key=lambda x: x['price'])
     
     return render_template('results.html', results=all_results, query=query)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, threaded=True)
+    # Threaded=False yaparak hafızayı daha da koruyabiliriz
+    app.run(host='0.0.0.0', port=5000)

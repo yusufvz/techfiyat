@@ -8,7 +8,7 @@ def search_n11(query):
     print(f"🔍 N11'de aranıyor: {query}")
     
     options = Options()
-    # --- HIZ AYARLARI (BUNU TRENDYOL VE N11 DOSYALARINA YAPIŞTIR) ---
+    # --- HIZ AYARLARI ---
     options.page_load_strategy = 'eager' # Sayfanın bitmesini bekleme!
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -36,16 +36,18 @@ def search_n11(query):
         search_url = f"https://www.n11.com/arama?q={query.replace(' ', '+')}"
         driver.get(search_url)
         
+        # Bekleme süresini minimumda tutuyoruz (Eager mod sayesinde)
         time.sleep(1)
         
         # Sayfayı kaydır
         driver.execute_script("window.scrollBy(0, 500);")
         time.sleep(1)
 
-        # N11'de ürünler genelde "li.column" içindedir
+        # N11 ürün kartları
         product_cards = driver.find_elements(By.CSS_SELECTOR, "li.column")
         print(f"✅ N11: Bulunan ürün sayısı: {len(product_cards)}")
 
+        # İlk 10 ürünü al
         for card in product_cards[:10]:
             try:
                 card_text = card.text
@@ -55,7 +57,7 @@ def search_n11(query):
                 try:
                     name = card.find_element(By.CSS_SELECTOR, "h3.productName").text
                 except:
-                    continue # İsmi yoksa geç
+                    continue 
 
                 # --- LİNK BULMA ---
                 try:
@@ -68,13 +70,13 @@ def search_n11(query):
                 lines = card_text.split('\n')
                 
                 for line in lines:
-                    # N11 bazen "Kazananlar Kulübü" gibi metinler ekler, elemeye gerek yok regex halleder
                     matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', line)
                     for match in matches:
                         clean = match.replace('.', '').replace(',', '.')
                         try:
                             val = float(clean)
-                            if val > 10000: # 10.000 TL altı filtre
+                            # Laptop filtresi (10.000 TL altı elenir)
+                            if val > 10000: 
                                 valid_prices.append(val)
                         except:
                             continue
