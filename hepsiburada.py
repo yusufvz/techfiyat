@@ -5,12 +5,12 @@ import time
 import re
 
 def search_hepsiburada(query):
-    print(f"Hepsiburada taranıyor: {query}")
+    print(f"🔍 Hepsiburada'da aranıyor: {query}")
     results = []
     
-    # Standart Render Ayarları (Bunlar Mecbur)
+    # Standart Chrome Ayarları
     options = Options()
-    options.add_argument("--headless") 
+    options.add_argument("--headless") # Ekran yok
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -22,26 +22,26 @@ def search_hepsiburada(query):
     try:
         url = f"https://www.hepsiburada.com/ara?q={query.replace(' ', '+')}"
         driver.get(url)
-        time.sleep(3) # Sayfanın yüklenmesi için 3 saniye bekle
+        time.sleep(2) # Sayfanın yüklenmesi için kısa bir bekleme
 
+        # Ürünleri bul
         products = driver.find_elements(By.CSS_SELECTOR, "li[class*='productListContent']")
         
-        # Sadece ilk 3 ürünü al (Hata riskini azaltır)
+        # Sadece ilk 3 ürünü al (RAM dostu olsun diye)
         for product in products[:3]:
             try:
                 name = product.find_element(By.CSS_SELECTOR, "h3").text
                 link = product.find_element(By.TAG_NAME, "a").get_attribute("href")
                 
-                # Fiyatı metin içinden bul
+                # Fiyatı metin içinden çek
                 price_text = product.text
                 matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', price_text)
                 
                 if matches:
-                    # En mantıklı fiyatı al
                     prices = []
                     for m in matches:
                         clean = float(m.replace('.', '').replace(',', '.'))
-                        if clean > 1000: # 1000 TL altını filtrele
+                        if clean > 1000: # Aksesuar filtresi
                             prices.append(clean)
                     
                     if prices:
@@ -56,8 +56,8 @@ def search_hepsiburada(query):
             except:
                 continue
     except Exception as e:
-        print(f"HB Hata: {e}")
+        print(f"Hata: {e}")
     finally:
-        driver.quit()
+        driver.quit() # Tarayıcıyı mutlaka kapat
         
     return results
