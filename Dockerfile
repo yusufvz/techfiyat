@@ -26,4 +26,4 @@ COPY . .
 EXPOSE 5000
 
 # 7. Uygulamayı başlat
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "300", "app:app"]

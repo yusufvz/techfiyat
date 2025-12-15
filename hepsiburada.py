@@ -10,19 +10,24 @@ def search_hepsiburada(query):
     print(f"🔍 Hepsiburada'da aranıyor: {query}")
     
     options = Options()
-    # --- SUNUCU İÇİN ZORUNLU AYARLAR ---
-    options.add_argument("--headless") # Sunucuda ekran olmadığı için ŞART
-    options.add_argument("--no-sandbox") # Linux güvenliği için ŞART
-    options.add_argument("--disable-dev-shm-usage") # Bellek hatası almamak için ŞART
+    # --- HIZ VE PERFORMANS AYARLARI ---
+    options.page_load_strategy = 'eager'  # <--- SİHİRLİ KOD BU! (Sayfanın bitmesini beklemez)
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions") # Eklentileri kapat
+    options.add_argument("--dns-prefetch-disable") # DNS aramalarını bekleme
     options.add_argument("--window-size=1920,1080")
     
-    # --- İNSAN GİBİ GÖRÜNME AYARLARI ---
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
     
-    # Resimleri kapatma (Hız için)
-    prefs = {"profile.managed_default_content_settings.images": 2}
+    # Resimleri tamamen engelle
+    prefs = {
+        "profile.managed_default_content_settings.images": 2,
+        "profile.default_content_setting_values.notifications": 2
+    }
     options.add_experimental_option("prefs", prefs)
     
     driver = webdriver.Chrome(options=options)
@@ -32,33 +37,33 @@ def search_hepsiburada(query):
         search_url = f"https://www.hepsiburada.com/ara?q={query.replace(' ', '+')}"
         driver.get(search_url)
 
-        wait = WebDriverWait(driver, 15)
-        print("⏳ Ürünlerin yüklenmesi bekleniyor...")
+        # Bekleme süresini azalttık (Sadece ürün listesi görünene kadar bekle)
+        wait = WebDriverWait(driver, 10)
         
-        # Ürün listesini bekle
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li[class*='productListContent']")))
-        
-        # Sayfayı biraz kaydır
-        driver.execute_script("window.scrollBy(0, 300);")
-        time.sleep(2)
+        try:
+            # Ürün listesini bekle
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li[class*='productListContent']")))
+        except:
+            print("⚠️ Ürün listesi geç yüklendi veya bulunamadı.")
+
+        # Kaydırma işlemini azalttık
+        driver.execute_script("window.scrollBy(0, 200);")
+        time.sleep(1) # Sadece 1 saniye bekle
 
         products = driver.find_elements(By.CSS_SELECTOR, "li[class*='productListContent']")
         print(f"✅ Bulunan ham ürün sayısı: {len(products)}")
 
-        for i, product in enumerate(products[:10]):
+        # İlk 5 ürünü al (Hız için sayıyı düşürdük, istersen artırabilirsin)
+        for i, product in enumerate(products[:5]):
             try:
                 # --- İSİM ---
                 name = ""
                 try:
                     name = product.find_element(By.CSS_SELECTOR, "h3").text
                 except:
-                    try:
-                        name = product.find_element(By.TAG_NAME, "a").get_attribute("title")
-                    except:
-                        pass
+                    continue # İsmi olmayan ürünü atla, vakit kaybetme
                 
-                if not name:
-                    continue
+                if not name: continue
 
                 # --- LİNK ---
                 try:
@@ -66,41 +71,30 @@ def search_hepsiburada(query):
                 except:
                     link = "#"
 
-                # --- AKILLI FİYAT BULMA (GELİŞMİŞ FİLTRE) ---
-                # Kartın içindeki metni satır satır inceliyoruz
+                # --- FİYAT ---
+                # Text işlemleri hızlıdır, burada yavaşlama olmaz
                 card_text = product.text
-                lines = card_text.split('\n') # Satırlara böl
-                
+                lines = card_text.split('\n')
                 valid_prices = []
 
                 for line in lines:
-                    # EĞER SATIRDA "x" VARSA (Örn: 3 x 15.000) -> BU TAKSİTTİR, ATLA!
                     if ' x ' in line or 'taksit' in line.lower() or 'ay' in line.lower():
                         continue
                     
-                    # Bu satırda "Rakam + TL" var mı?
                     matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', line)
-                    
                     for match in matches:
                         clean = match.replace('.', '').replace(',', '.')
                         try:
                             val = float(clean)
-                            # FİLTRE 1: 10.000 TL altı kupondur, at.
-                            # FİLTRE 2: "x" içeren satırları zaten yukarıda eledik.
                             if val > 10000:
                                 valid_prices.append(val)
                         except:
                             continue
                 
                 if valid_prices:
-                    # Geçerli fiyatlar arasından en düşüğünü al (İndirimli fiyat)
                     final_price = min(valid_prices)
-                    
-                    # Formatla
                     price_str = f"{final_price:,.0f} TL".replace(',', '.')
                     
-                    print(f"   💰 {name[:20]}... -> {price_str}") # Terminalde görelim
-
                     results.append({
                         "site": "Hepsiburada",
                         "name": name,
@@ -113,15 +107,10 @@ def search_hepsiburada(query):
                 continue
 
     except Exception as e:
-        print(f"🚨 Genel Hata: {e}")
+        print(f"🚨 Hata: {e}")
     
     finally:
         driver.quit()
 
-    # Fiyata göre sırala
     results.sort(key=lambda x: x['price'])
     return results
-
-if __name__ == "__main__":
-    veri = search_hepsiburada("asus tuf")
-    print(f"\n✅ TOPLAM BAŞARILI: {len(veri)}")
