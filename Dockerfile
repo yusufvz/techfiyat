@@ -1,30 +1,33 @@
 # 1. Python'un resmi, hafif sürümünü temel al
 FROM python:3.9-slim
 
-# 2. Gerekli sistem araçlarını ve Chrome'u kur
+# 2. Gerekli sistem araçlarını kur
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     unzip \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list' \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable \
+    --no-install-recommends
+
+# 3. Google Chrome'u doğrudan indir ve kur (En Garanti Yöntem)
+# Repo anahtarlarıyla uğraşmadan direkt .deb dosyasını kuruyoruz.
+RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
+    && rm google-chrome-stable_current_amd64.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Çalışma klasörünü ayarla
+# 4. Çalışma klasörünü ayarla
 WORKDIR /app
 
-# 4. Gereksinim dosyasını kopyala ve kütüphaneleri kur
+# 5. Gereksinim dosyasını kopyala ve kütüphaneleri kur
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Projenin geri kalanını kopyala
+# 6. Projenin geri kalanını kopyala
 COPY . .
 
-# 6. Portu dışarıya aç (Render genelde 10000 bekler ama biz Flask'a 5000 dedik, ayarlarız)
+# 7. Portu dışarıya aç
 EXPOSE 5000
 
-# 7. Uygulamayı başlat (Gunicorn ile)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# 8. Uygulamayı başlat (Timeout süresini 120 saniye yaptık ki botlar rahat çalışsın)
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "300", "app:app"]
