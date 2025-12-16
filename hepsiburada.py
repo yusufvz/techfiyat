@@ -1,8 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+# --- EKLENEN KISIMLAR ---
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+# ------------------------
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
@@ -23,9 +25,14 @@ def search_hepsiburada(query):
     prefs = {"profile.managed_default_content_settings.images": 2}
     options.add_experimental_option("prefs", prefs)
     
-    # --- KRİTİK DÜZELTME: Manager ile kurulum ---
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    # --- KRİTİK DÜZELTME: SÜRÜCÜYÜ OTOMATİK KUR ---
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"🚨 Sürücü Hatası: {e}")
+        return []
+
     results = []
 
     try:
@@ -36,7 +43,7 @@ def search_hepsiburada(query):
         try:
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li[class*='productListContent']")))
         except:
-            pass # Bulamazsa da devam etsin, hata vermesin
+            pass
         
         driver.execute_script("window.scrollBy(0, 300);")
         time.sleep(2)
@@ -44,19 +51,11 @@ def search_hepsiburada(query):
         products = driver.find_elements(By.CSS_SELECTOR, "li[class*='productListContent']")
         print(f"✅ Hepsiburada: {len(products)} ürün bulundu.")
 
-        for product in products[:5]: # RAM için limit 5
+        for product in products[:5]:
             try:
-                name = ""
-                try:
-                    name = product.find_element(By.CSS_SELECTOR, "h3").text
-                except:
-                    continue
-
-                try:
-                    link = product.find_element(By.TAG_NAME, "a").get_attribute("href")
-                except:
-                    link = "#"
-
+                name = product.find_element(By.CSS_SELECTOR, "h3").text
+                link = product.find_element(By.TAG_NAME, "a").get_attribute("href")
+                
                 # Fiyat okuma
                 price_text = product.text
                 matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', price_text)

@@ -1,8 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+# --- EKLENEN KISIMLAR ---
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+# ------------------------
 import time
 import re
 
@@ -21,8 +23,13 @@ def search_amazon(query):
     options.add_experimental_option("prefs", prefs)
     
     # --- KRİTİK DÜZELTME ---
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"🚨 Sürücü Hatası: {e}")
+        return []
+
     results = []
 
     try:
@@ -33,19 +40,16 @@ def search_amazon(query):
         cards = driver.find_elements(By.CSS_SELECTOR, "div[data-component-type='s-search-result']")
         print(f"✅ Amazon: {len(cards)} ürün bulundu.")
 
-        for card in cards[:5]: # RAM için limit 5
+        for card in cards[:5]:
             try:
-                try:
-                    name = card.find_element(By.TAG_NAME, "h2").text
+                try: name = card.find_element(By.TAG_NAME, "h2").text
                 except: continue
 
-                try:
-                    link = card.find_element(By.TAG_NAME, "h2").find_element(By.TAG_NAME, "a").get_attribute("href")
+                try: link = card.find_element(By.TAG_NAME, "h2").find_element(By.TAG_NAME, "a").get_attribute("href")
                 except: link = "#"
                 
                 card_text = card.text
                 matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?)', card_text)
-                
                 prices = []
                 for m in matches:
                     clean = m.replace('.', '').replace(',', '.')

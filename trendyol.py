@@ -1,8 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+# --- EKLENEN KISIMLAR ---
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+# ------------------------
 import time
 import re
 
@@ -22,8 +24,13 @@ def search_trendyol(query):
     options.add_experimental_option("prefs", prefs)
     
     # --- KRİTİK DÜZELTME ---
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"🚨 Sürücü Hatası: {e}")
+        return []
+
     results = []
 
     try:
@@ -31,7 +38,6 @@ def search_trendyol(query):
         driver.get(search_url)
         time.sleep(3)
         
-        # Trendyol scroll sever
         driver.execute_script("window.scrollBy(0, 500);")
         time.sleep(1)
 
@@ -43,17 +49,16 @@ def search_trendyol(query):
                 product_links.append(link)
 
         print(f"✅ Trendyol: {len(product_links)} potansiyel ürün.")
-
+        
         added_urls = set()
-        for link_elem in product_links[:5]: # RAM için limit 5
+        for link_elem in product_links[:5]:
             try:
                 href = link_elem.get_attribute("href")
                 if href in added_urls: continue
                 
                 card_text = link_elem.text
-                if not card_text.strip(): # Yazı yoksa kapsayıcıya bak
-                    try:
-                        card_text = link_elem.find_element(By.XPATH, "./..").text
+                if not card_text.strip():
+                    try: card_text = link_elem.find_element(By.XPATH, "./..").text
                     except: pass
                 
                 if "TL" not in card_text: continue
@@ -67,10 +72,9 @@ def search_trendyol(query):
                     except: continue
                 
                 if not prices: continue
-                
                 final_price = min(prices)
                 
-                # İsim bulma (En uzun satırı isim varsayalım)
+                # İsim Tahmini
                 lines = card_text.split('\n')
                 name = "Trendyol Ürünü"
                 longest = ""
@@ -87,7 +91,6 @@ def search_trendyol(query):
                     "link": href
                 })
                 added_urls.add(href)
-
             except: continue
 
     except Exception as e:

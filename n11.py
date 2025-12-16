@@ -1,8 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+# --- EKLENEN KISIMLAR ---
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+# ------------------------
 import time
 import re
 
@@ -21,8 +23,13 @@ def search_n11(query):
     options.add_experimental_option("prefs", prefs)
     
     # --- KRİTİK DÜZELTME ---
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"🚨 Sürücü Hatası: {e}")
+        return []
+
     results = []
 
     try:
@@ -34,14 +41,13 @@ def search_n11(query):
         cards = driver.find_elements(By.CSS_SELECTOR, "li.column")
         print(f"✅ N11: {len(cards)} ürün bulundu.")
 
-        for card in cards[:5]: # RAM için limit 5
+        for card in cards[:5]:
             try:
                 name = card.find_element(By.CSS_SELECTOR, "h3.productName").text
                 link = card.find_element(By.TAG_NAME, "a").get_attribute("href")
                 
                 card_text = card.text
                 matches = re.findall(r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?) ?TL', card_text)
-                
                 prices = []
                 for m in matches:
                     try:
