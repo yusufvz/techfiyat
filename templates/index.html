@@ -146,6 +146,17 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Alt Ortadaki Link İçin Stil */
+        .bottom-footer {
+            position: absolute; /* Sayfaya göre konumlandır */
+            bottom: 30px;       /* Aşağıdan 30px yukarıda olsun */
+            left: 50%;          /* Soldan ortala */
+            transform: translateX(-50%); /* Tam merkezlemek için ince ayar */
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -167,6 +178,22 @@
             <button type="submit" class="search-btn">
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
+        </form>
+
+        <div class="supported-sites">
+            <i class="fa-solid fa-bag-shopping" title="Hepsiburada"></i>
+            <i class="fa-solid fa-shirt" title="Trendyol"></i> 
+            <i class="fa-brands fa-amazon" title="Amazon"></i>
+            <i class="fa-solid fa-bug" title="N11"></i> 
+        </div>
+        
+        </div> <div class="bottom-footer">
+        <a href="https://www.instagram.com/tech.fiyat/" target="_blank" class="btn btn-outline-light rounded-pill px-4" style="border-color: rgba(255,255,255,0.3); backdrop-filter: blur(5px);">
+            <i class="fa-brands fa-instagram me-2"></i>Bizi Takip Edin
+        </a>
+    </div>
+
+    <div id="loading-overlay">
         </form>
 
         <div class="supported-sites">
